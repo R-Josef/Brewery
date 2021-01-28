@@ -1,5 +1,6 @@
 package com.dre.brewery.filedata;
 
+import com.Acrobot.Breeze.Utils.Encoding.Base64;
 import com.dre.brewery.BSealer;
 import com.dre.brewery.Brew;
 import com.dre.brewery.DistortChat;
@@ -20,6 +21,7 @@ import com.dre.brewery.recipe.PluginItem;
 import com.dre.brewery.recipe.RecipeItem;
 import com.dre.brewery.utility.BUtil;
 import com.dre.brewery.utility.SQLSync;
+import com.google.common.io.ByteSource;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
@@ -29,9 +31,8 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -137,8 +138,30 @@ public class BConfig {
 		for (String l : new String[] {"de", "en", "fr", "it", "zh", "tw"}) {
 			File lfold = new File(configs, l);
 			try {
-				BUtil.saveFile(p.getResource("config/" + (P.use1_13 ? "v13/" : "v12/") + l + "/config.yml"), lfold, "config.yml", overwrite);
-				BUtil.saveFile(p.getResource("languages/" + l + ".yml"), languages, l + ".yml", false); // Never overwrite languages, they get updated with their updater
+				InputStream configInput = p.getResource("config/" + (P.use1_13 ? "v13/" : "v12/") + l + "/config.yml");
+				InputStream langInput = p.getResource("languages/" + l + ".yml");
+				if (configInput != null) {
+					ByteSource configByteSource = new ByteSource() {
+						@Override
+						public InputStream openStream() throws IOException {
+							return configInput;
+						}
+					};
+					String utf8ConfigString = configByteSource.asCharSource(StandardCharsets.UTF_8).read();
+					InputStream utf8ConfigInput = new ByteArrayInputStream(utf8ConfigString.getBytes());
+					BUtil.saveFile(utf8ConfigInput, lfold, "config.yml", overwrite);
+				}
+				if (configInput != null) {
+					ByteSource langByteSource = new ByteSource() {
+						@Override
+						public InputStream openStream() throws IOException {
+							return langInput;
+						}
+					};
+					String utf8LangString = langByteSource.asCharSource(StandardCharsets.UTF_8).read();
+					InputStream utf8LangInput = new ByteArrayInputStream(utf8LangString.toString().getBytes());
+					BUtil.saveFile(utf8LangInput, languages, l + ".yml", false); // Never overwrite languages, they get updated with their updater
+				}
 			} catch (IOException e) {
 				if (!(l.equals("zh") || l.equals("tw"))) {
 					// zh and tw not available for some versions
